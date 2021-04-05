@@ -36,7 +36,7 @@ def gammaDisplay(img_path: str, rep: int):
         img =  cv.imread(img_path)
     cv.namedWindow(title_window)
     trackbar_name = 'Gamma x %d' % alpha_slider_max
-    cv.createTrackbar(trackbar_name, title_window , 1, alpha_slider_max, on_trackbar)
+    cv.createTrackbar(trackbar_name, title_window , 100, alpha_slider_max, on_trackbar)
     # Show some stuff
     on_trackbar(0)
     # Wait until user press some key
@@ -44,7 +44,7 @@ def gammaDisplay(img_path: str, rep: int):
 
 def main():
     #gammaDisplay('bac_con.png', LOAD_GRAY_SCALE)
-    gammaDisplay('beach.jpg', LOAD_GRAY_SCALE)
+    gammaDisplay('testImg1.jpg', LOAD_RGB)
 
 
 if __name__ == '__main__':

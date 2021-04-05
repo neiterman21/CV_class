@@ -79,21 +79,16 @@ def transformYIQ2RGB(imgYIQ: np.ndarray) -> np.ndarray:
 def onechanelEqualize(imgOrig: np.ndarray) -> (np.ndarray, np.ndarray, np.ndarray):
     imgOrig *=255
     irig_flat = imgOrig.ravel().astype(int)
-    histOrg , edgs  = np.histogram(irig_flat,bins= 256)
-    
+    histOrg , edgs  = np.histogram(irig_flat,256,[0,256])
+ 
     cumsumog = np.cumsum(histOrg)
-    LUT = np.zeros_like(cumsumog)
-    total_pixels = len(irig_flat)
-    for i in range(len(cumsumog)):
-        LUT[i] = np.round((cumsumog[i]/total_pixels)*255).astype(int)
+    
+    cdf_m = np.ma.masked_equal(cumsumog,0)
+    cdf_m = (cdf_m - cdf_m.min())*255/(cdf_m.max()-cdf_m.min())
+    cdf = np.ma.filled(cdf_m,0).astype('uint8')
+    imgEq = cdf[imgOrig.astype(int)]
 
-    imgEq_flat = np.zeros_like(irig_flat,dtype=int)
-    for i in range(len(imgEq_flat)):
-        imgEq_flat[i] = LUT[irig_flat[i]]
-    imgEq = imgEq_flat.reshape(imgOrig.shape)
-    histEQ   = np.zeros(256)
-    for p in imgEq_flat:
-        histEQ[p] += 1
+    histEQ   , edgs  = np.histogram(imgEq,bins= 256)
     
     imgOrig /=255.0
     imgEq = imgEq.astype(float) 
