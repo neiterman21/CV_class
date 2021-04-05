@@ -109,20 +109,38 @@ def hsitogramEqualize(imgOrig: np.ndarray) -> (np.ndarray, np.ndarray, np.ndarra
     if len(imgOrig.shape) == 2:
         return onechanelEqualize(imgOrig)
     yiq_img = transformRGB2YIQ(imgOrig)
-    imgEq,histOrg,histEQ = onechanelEqualize(imgOrig[:,:,0])    
-    imgEq = np.dstack((imgEq,yiq_img[:,:,1],yiq_img[:,:,1]))
-    return (imgEq,histOrg,histEQ)
+    imgEq,histOrg,histEQ = onechanelEqualize(yiq_img[:,:,0])    
+    imgEq = np.dstack((imgEq,yiq_img[:,:,1],yiq_img[:,:,2]))
+    return (transformYIQ2RGB(imgEq),histOrg,histEQ)
+
+def getWeightedMean(intens: np.ndarray ) -> int:
+    idx = np.arange(len(intens))
+    return (intens*idx).sum()/np.sum(intens)
+
+def mse(imOrig: np.ndarray ,imQuant: np.ndarray ) -> int:
+    return np.sqrt((imOrig-imQuant)**2).mean()
 
 def onechanelquantize(imOrig: np.ndarray, nQuant: int, nIter: int) -> (List[np.ndarray], List[float]):
+    qImages = []
+    error_i = []
     imOrig *=255
     irig_flat = imOrig.ravel().astype(int)
     histOrg , edgs  = np.histogram(irig_flat,bins= 256)
-    z = np.array(nQuant +1 , dtype=int)
+    z = np.zeros(nQuant +1 , dtype=int)
+    
     for i in range(nQuant+1):
-        z[i] = i*(255/nQuant)
-    print(z)
-
-    return (None , None)
+        z[i] = i*(255.0/nQuant)
+    
+    for i in range(nIter):
+        x_bar = [z[i] + getWeightedMean(histOrg[z[i]:z[i+1]]) for i in range(nQuant)]
+        qImage_i = np.zeros_like(imOrig)
+        for j in range(len(x_bar)):
+            qImage_i[imOrig>z[j]] = x_bar[j]      
+        error_i.append(mse(imOrig,qImage_i))
+        qImages.append(qImage_i/255.0)
+        for j in range(len(x_bar)-1):
+            z[j+1] = (x_bar[j] + x_bar[j+1])/2 
+    return qImages , error_i
 
 
 def quantizeImage(imOrig: np.ndarray, nQuant: int, nIter: int) -> (List[np.ndarray], List[float]):
@@ -134,11 +152,11 @@ def quantizeImage(imOrig: np.ndarray, nQuant: int, nIter: int) -> (List[np.ndarr
         :return: (List[qImage_i],List[error_i])
     """
     if len(imOrig.shape) == 2:
-        return onechanelEqualize(imOrig)
+        return onechanelquantize(imOrig.copy(),nQuant,nIter)
     yiq_img = transformRGB2YIQ(imOrig)
-    qImage , mse = onechanelquantize(imOrig[:,:,0],nQuant,nIter)    
-    for img in qImage:
-        img = np.dstack((img,yiq_img[:,:,1],yiq_img[:,:,1]))
-    return (qImage , mse)
+    qImage_ , mse = onechanelquantize(yiq_img[:,:,0].copy(),nQuant,nIter) 
+    qImage = []
+    for img in qImage_:
+        qImage.append(transformYIQ2RGB( np.dstack((img,yiq_img[:,:,1],yiq_img[:,:,2]))))
+    return qImage , mse
     
-
